@@ -1,0 +1,8 @@
+{
+	"name": "Wrench",
+	"version": "0.0.1",
+	"title": "Wrench",
+	"author": "luanpotter",
+	"description": "Base mod to open entity GUIs",
+	"dependencies": ["base >= 0.12.20" ]
+}
