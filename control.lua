@@ -1,11 +1,13 @@
 require "util"
 require "defines"
 
-local Entities = (function()
+global.accesses = 0
+
+local Entities = (function(store)
 
   local function check_setup()
-    if not global.entities then
-      global.entities = {}
+    if not store.entities then
+      store.entities = {}
     end
   end
 
@@ -15,34 +17,41 @@ local Entities = (function()
 
   local function get(entity)
     check_setup()
-    entity = entity or global.current_entity
+    entity = entity or store.current_entity
     local id = to_id(entity)
-    if not global.entities[id] then
-      global.entities[id] = {
-        slots = {}
-      }
+    if not store.entities[id] then
+      store.entities[id] = { slots = {} }
     end
-    return global.entities[id]
+    return store.entities[id]
+  end
+
+  local function set_current(entity)
+    store.current_entity = entity
   end
 
   local function delete(entity)
     check_setup()
     local id = to_id(entity)
-    global.entities[id] = nil
+    store.entities[id] = nil
   end
 
   return {
     get = get,
+    set_current = set_current,
     delete = delete
   }
-end)()
+end)(global)
+
+local EntityClickEvent = script.generate_event_name()
 
 local function setup_slot(frame, id)
+  local entity = Entities.get()
+
   for i = 1,#frame.children_names do
     frame[frame.children_names[i]].destroy()
   end
 
-  local item = Entities.get().slots[id]
+  local item = entity.slots[id]
   local button = frame.add{type="button", style="wrench-slot_button_style", name="wrench-button-slot-" .. id }
   if item then
     button.add{type="frame", style="wrench-slot_button_style-" .. item.name, name="wrench-icon-slot-" .. id }
@@ -54,9 +63,6 @@ local add_item_button = function (place, id)
   local main_frame = place.add{type="frame", style="wrench-amount_frame", name="wrench-slot-" .. id }
   setup_slot(main_frame, id)
 end
-
-
-local EntityClickEvent = script.generate_event_name()
 
 script.on_event(defines.events.on_built_entity, function(event)
   local player = game.get_player(event.player_index)
@@ -74,12 +80,20 @@ script.on_event(defines.events.on_built_entity, function(event)
       return
     end
 
-    if #entities == 1 then
-      global.current_entity = entities[1]
-      game.raise_event(EntityClickEvent, { entity = global.current_entity, player = player })
-    elseif player.gui.center.wrench then
-      global.current_entity = nil
+    if player.gui.center.wrench then
       player.gui.center.wrench.destroy()
+    end
+
+    local entity
+    if #entities == 1 then
+      entity = entities[1]
+    else
+      entity = nil
+    end
+
+    Entities.set_current(entity)
+    if (entity) then
+      game.raise_event(EntityClickEvent, { entity = entity, player = player })
     end
   end
 end)
@@ -113,7 +127,9 @@ script.on_event(defines.events.on_gui_click, function(event)
       parent = parent.parent
     end
 
-    local slot = Entities.get().slots[id]
+    id = tonumber(id)
+    local entity = Entities.get()
+    local slot = entity.slots[id]
     local hand = player.cursor_stack
     if hand.valid_for_read and slot then
       if hand.name == slot.name then
@@ -121,14 +137,14 @@ script.on_event(defines.events.on_gui_click, function(event)
         player.cursor_stack.clear()
       end
     elseif hand.valid_for_read and not slot then
-      Entities.get().slots[id] = {
+      entity.slots[id] = {
         name = hand.name,
         count = hand.count
       }
       hand.clear()
     elseif not hand.valid_for_read and slot then
       hand.set_stack(slot)
-      Entities.get().slots[id] = nil
+      entity.slots[id] = nil
     end
     setup_slot(parent, id)
   end
