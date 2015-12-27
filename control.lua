@@ -72,7 +72,7 @@ script.on_event(defines.events.on_built_entity, function(event)
 
   if created_entity.name == "wrench-entity" then
     local pos = created_entity.position
-    player.insert{name = "wrench", count = 1}
+    player.cursor_stack.set_stack({name = "wrench", count = 1})
     created_entity.destroy()
     entities = surface.find_entities{{ pos.x, pos.y }, { pos.x, pos.y }}
     if #entities > 1 then
