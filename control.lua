@@ -1,11 +1,11 @@
 require "util"
 require "defines"
 
-local Entities = (function()
+local Entities = function(store)
 
   local function check_setup()
-    if not global.entities then
-      global.entities = {}
+    if not store.entities then
+      store.entities = {}
     end
   end
 
@@ -14,35 +14,43 @@ local Entities = (function()
   end
 
   local function get(entity)
+  if store.name then
+    game.players[1].print('get ' .. store.name)
+  else game.players[1].print('get nil') end
     check_setup()
-    entity = entity or global.current_entity
+    entity = entity or store.current_entity
     local id = to_id(entity)
-    if not global.entities[id] then
-      global.entities[id] = {
+    if not store.entities[id] then
+      store.entities[id] = {
         slots = {}
       }
     end
-    return global.entities[id]
+    return store.entities[id]
+  end
+
+  local function set_current(entity)
+    store.current_entity = entity
   end
 
   local function delete(entity)
     check_setup()
     local id = to_id(entity)
-    global.entities[id] = nil
+    store.entities[id] = nil
   end
 
   return {
     get = get,
+    set_current = set_current,
     delete = delete
   }
-end)()
+end
 
-local function setup_slot(frame, id)
+local function setup_slot(frame, id, entity)
   for i = 1,#frame.children_names do
     frame[frame.children_names[i]].destroy()
   end
 
-  local item = Entities.get().slots[id]
+  local item = entity.slots[id]
   local button = frame.add{type="button", style="wrench-slot_button_style", name="wrench-button-slot-" .. id }
   if item then
     button.add{type="frame", style="wrench-slot_button_style-" .. item.name, name="wrench-icon-slot-" .. id }
@@ -50,13 +58,18 @@ local function setup_slot(frame, id)
   end
 end
 
+local EntityClickEvent = script.generate_event_name()
+local SetupSlotEvent = script.generate_event_name()
+
 local add_item_button = function (place, id)
   local main_frame = place.add{type="frame", style="wrench-amount_frame", name="wrench-slot-" .. id }
-  setup_slot(main_frame, id)
+  game.raise_event(SetupSlotEvent, { frame = main_frame, id = id })
 end
 
-
-local EntityClickEvent = script.generate_event_name()
+script.on_event(SetupSlotEvent, function (event)
+  game.players[1].print(global.current_entity)
+  setup_slot(event.frame, event.id, Entities(global).get())
+end)
 
 script.on_event(defines.events.on_built_entity, function(event)
   local player = game.get_player(event.player_index)
@@ -74,31 +87,34 @@ script.on_event(defines.events.on_built_entity, function(event)
       return
     end
 
-    if #entities == 1 then
-      global.current_entity = entities[1]
-      game.raise_event(EntityClickEvent, { entity = global.current_entity, player = player })
-    elseif player.gui.center.wrench then
-      global.current_entity = nil
+    if player.gui.center.wrench then
       player.gui.center.wrench.destroy()
     end
+
+    local entity = nil
+    if #entities == 1 then
+      entity = entities[1]
+      game.raise_event(EntityClickEvent, { entity = entity, player = player })
+    end
+    Entities(global).set_current(entity)
   end
 end)
 
 script.on_event(defines.events.on_entity_died, function(event)
-  Entities.delete(event.entity)
+  Entities(global).delete(event.entity)
 end)
 
 script.on_event(defines.events.on_preplayer_mined_item, function(event)
   local player = game.players[event.player_index]
   local print = player.print
 
-  local entity = Entities.get(event.entity)
+  local entity = Entities(global).get(event.entity)
   if entity then
     for _, slot in pairs(entity.slots) do
       player.insert(slot)
     end
   end
-  Entities.delete(event.entity)
+  Entities(global).delete(event.entity)
 end)
 
 script.on_event(defines.events.on_gui_click, function(event)
@@ -130,10 +146,10 @@ script.on_event(defines.events.on_gui_click, function(event)
       hand.set_stack(slot)
       Entities.get().slots[id] = nil
     end
-    setup_slot(parent, id)
+
+    game.raise_event(SetupSlotEvent, { frame = parent, id = id })
   end
 end)
 
-remote.add_interface("wrench.entities", Entities)
 remote.add_interface("wrench.events", { entity_click = function () return EntityClickEvent end })
 remote.add_interface("wrench.gui", { add_item_button = add_item_button })
