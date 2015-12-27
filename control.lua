@@ -42,8 +42,6 @@ local Entities = (function(store)
   }
 end)(global)
 
-local EntityClickEvent = script.generate_event_name()
-
 local function setup_slot(frame, id)
   local entity = Entities.get()
 
@@ -59,10 +57,17 @@ local function setup_slot(frame, id)
   end
 end
 
-local add_item_button = function (place, id)
-  local main_frame = place.add{type="frame", style="wrench-amount_frame", name="wrench-slot-" .. id }
-  setup_slot(main_frame, id)
-end
+local GUI = {
+  add_item_button = function (place, id, item_stack)
+    local main_frame = place.add{type="frame", style="wrench-amount_frame", name="wrench-slot-" .. id }
+    if (item_stack) then
+      Entities.get().slots[id] = item_stack
+    end
+    setup_slot(main_frame, id)
+  end
+}
+
+local EntityClickEvent = script.generate_event_name()
 
 script.on_event(defines.events.on_built_entity, function(event)
   local player = game.get_player(event.player_index)
@@ -157,5 +162,5 @@ script.on_event(defines.events.on_gui_click, function(event)
 end)
 
 remote.add_interface("wrench.entities", Entities)
+remote.add_interface("wrench.gui", GUI)
 remote.add_interface("wrench.events", { entity_click = function () return EntityClickEvent end })
-remote.add_interface("wrench.gui", { add_item_button = add_item_button })
