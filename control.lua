@@ -135,6 +135,12 @@ script.on_event(defines.events.on_gui_click, function(event)
       if hand.name == slot.name then
         slot.count = slot.count + hand.count
         player.cursor_stack.clear()
+      else
+        entity.slots[id] = {
+          name = hand.name,
+          count = hand.count
+        }
+        hand.set_stack(slot)
       end
     elseif hand.valid_for_read and not slot then
       entity.slots[id] = {
