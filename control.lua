@@ -132,6 +132,17 @@ script.on_event(defines.events.on_gui_click, function(event)
       parent = parent.parent
     end
 
+    local function itemstack_to_rep (stack)
+      return {
+            name = stack.name,
+            count = stack.count,
+            type = stack.type,
+            has_grid = stack.has_grid,
+            health = stack.health,
+            durability = stack.durability
+          }
+    end
+
     id = tonumber(id)
     local entity = Entities.get()
     local slot = entity.slots[id]
@@ -141,17 +152,11 @@ script.on_event(defines.events.on_gui_click, function(event)
         slot.count = slot.count + hand.count
         player.cursor_stack.clear()
       else
-        entity.slots[id] = {
-          name = hand.name,
-          count = hand.count
-        }
+        entity.slots[id] = itemstack_to_rep(hand)
         hand.set_stack(slot)
       end
     elseif hand.valid_for_read and not slot then
-      entity.slots[id] = {
-        name = hand.name,
-        count = hand.count
-      }
+      entity.slots[id] = itemstack_to_rep(hand)
       hand.clear()
     elseif not hand.valid_for_read and slot then
       hand.set_stack(slot)
