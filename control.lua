@@ -1,7 +1,8 @@
 require "util"
 require "defines"
+require "array"
 
-global.accesses = 0
+local ignored_types = Array{ 'decorative', 'corpse', 'resource' }
 
 local Entities = (function(store)
 
@@ -79,7 +80,11 @@ script.on_event(defines.events.on_built_entity, function(event)
     local pos = created_entity.position
     player.cursor_stack.set_stack({name = "wrench", count = 1})
     created_entity.destroy()
-    entities = surface.find_entities{{ pos.x, pos.y }, { pos.x, pos.y }}
+    entities = Array(surface.find_entities{{ pos.x, pos.y }, { pos.x, pos.y }})
+    entities = entities:filter(function (el)
+      return not ignored_types:contains(el.type)
+    end)
+
     if #entities > 1 then
       print('Error: more than one entity found here...')
       return
