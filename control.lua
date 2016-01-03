@@ -86,7 +86,10 @@ script.on_event(defines.events.on_built_entity, function(event)
     end)
 
     if #entities > 1 then
-      print('Error: more than one entity found here...')
+      Entities.set_current(entities) -- put entire array
+      for i = 1, #entities do
+        game.raise_event(EntityClickEvent, { entity = entities[i], player = player })
+      end
       return
     end
 
